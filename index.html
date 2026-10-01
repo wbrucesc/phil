@@ -97,6 +97,9 @@ main {
 }
 header { display: flex; align-items: center; justify-content: space-between; min-height: 44px; }
 header h1 { font-size: 1.75rem; letter-spacing: -0.03em; line-height: 1; }
+.brand { display: flex; align-items: center; gap: 10px; }
+/* the home-screen icon in miniature, as a block: cream tile keeps it legible in dark mode */
+.mark { display: block; background: oklch(97% 0.02 90); border: 2px solid var(--border); box-shadow: 2px 2px 0 var(--shadow); }
 header p { font-size: 0.8125rem; font-weight: 600; color: var(--ink-muted); }
 
 .card {
@@ -436,7 +439,7 @@ function renderIntro() {
 }
 
 function header(t) {
-  return `<header><div><h1>Phil</h1></div>
+  return `<header><div class="brand"><img class="mark" src="mark.svg" alt="" width="36" height="36"><h1>Phil</h1></div>
     <div style="display:flex;align-items:center;gap:4px"><p>${long(toDay(t))}</p>
     <button class="icon" id="edit-btn" aria-label="Edit dates">${svg('edit')}</button></div></header>`;
 }

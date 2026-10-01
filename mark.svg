@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="24 22 464 464"><rect width="512" height="512" fill="#fbf6e9"/><g transform="translate(256 256) scale(1) translate(-256 -256) translate(-6 0) rotate(-9 256 256)"><rect x="170" y="168" width="208" height="290" rx="22" fill="#1b1b1b"/>
+      <rect x="152" y="150" width="208" height="290" rx="22" fill="#f5d14a" stroke="#1b1b1b" stroke-width="20"/>
+      <rect x="152" y="222" width="208" height="150" fill="#fdfcf7" stroke="#1b1b1b" stroke-width="16"/><ellipse cx="220" cy="284" rx="17" ry="23" fill="#1b1b1b"/><circle cx="226" cy="275" r="6" fill="#fdfcf7"/><path d="M274 288Q292 270 310 288" fill="none" stroke="#1b1b1b" stroke-width="13" stroke-linecap="round"/><path d="M214 324Q256 356 298 324" fill="none" stroke="#1b1b1b" stroke-width="13" stroke-linecap="round"/><g transform="">
+      <rect x="150" y="88" width="248" height="92" rx="12" fill="#1b1b1b"/>
+      <rect x="132" y="70" width="248" height="92" rx="12" fill="#5fd38a" stroke="#1b1b1b" stroke-width="18"/>
+      <g stroke="#1b1b1b" stroke-width="10" stroke-linecap="round"><path d="M172 92V140"/><path d="M206 92V140"/><path d="M240 92V140"/><path d="M274 92V140"/><path d="M308 92V140"/><path d="M342 92V140"/></g></g></g></svg>
