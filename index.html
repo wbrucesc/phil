@@ -1,0 +1,549 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Phil</title>
+<meta name="description" content="Refill and check-in tracker">
+<meta name="theme-color" content="#fbf6e9" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#24221e" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Phil">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="preload" href="fonts/inter.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="fonts/space-grotesk-700.woff2" as="font" type="font/woff2" crossorigin>
+<style>
+/* Visual language is Cartus's (../cartus/docs/DESIGN.md): every control is a block
+   with a visible edge and a hard shadow; color means something or isn't used.
+   green = confirm/done · yellow = needs attention · danger = destructive. */
+@font-face { font-family: 'Inter Variable'; src: url(fonts/inter.woff2) format('woff2'); font-weight: 100 900; font-display: swap; }
+@font-face { font-family: 'Space Grotesk'; src: url(fonts/space-grotesk-700.woff2) format('woff2'); font-weight: 700; font-display: swap; }
+
+:root {
+  --bg: oklch(97% 0.02 90);
+  --surface: oklch(99% 0.006 95);
+  --ink: oklch(15% 0 0);
+  --ink-muted: oklch(38% 0 0);
+  --ink-faint: oklch(55% 0 0);
+  --border: oklch(15% 0 0);
+  --shadow: oklch(15% 0 0);
+  --hairline: oklch(15% 0 0 / 0.14);
+  --track: oklch(15% 0 0 / 0.06);
+  --green: oklch(78% 0.16 152);
+  --green-ink: oklch(20% 0.05 152);
+  --yellow: oklch(85% 0.14 95);
+  --yellow-ink: oklch(25% 0.05 95);
+  --danger: oklch(72% 0.18 25);
+  --danger-ink: oklch(20% 0.05 25);
+  --dot: oklch(15% 0 0 / 0.08);
+  --stroke: 3px;
+  --off: 4px;
+  --ease: cubic-bezier(0.25, 1, 0.5, 1);
+  --sans: 'Inter Variable', -apple-system, system-ui, sans-serif;
+  --heading: 'Space Grotesk', -apple-system, system-ui, sans-serif;
+  font: 16px/1.5 var(--sans);
+  color-scheme: light dark;
+  color: var(--ink);
+  background: var(--bg);
+  font-synthesis: none;
+  -webkit-font-smoothing: antialiased;
+  -webkit-text-size-adjust: 100%;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: oklch(20% 0.01 90);
+    --surface: oklch(25% 0.01 90);
+    --ink: oklch(95% 0 0);
+    --ink-muted: oklch(75% 0 0);
+    --ink-faint: oklch(58% 0 0);
+    --border: oklch(95% 0 0);
+    --shadow: oklch(8% 0.01 90);
+    --hairline: oklch(95% 0 0 / 0.18);
+    --track: oklch(95% 0 0 / 0.06);
+    --green: oklch(45% 0.13 152);
+    --green-ink: oklch(92% 0.04 152);
+    --yellow: oklch(86% 0.17 95);   /* stays bright: in dark mode it's only ever a mark */
+    --yellow-ink: oklch(20% 0.06 95);
+    --danger: oklch(48% 0.15 25);
+    --danger-ink: oklch(94% 0.04 25);
+    --dot: oklch(95% 0 0 / 0.08);
+  }
+}
+
+* { box-sizing: border-box; }
+html { background: var(--bg); }
+body {
+  margin: 0;
+  min-height: 100svh;
+  background: var(--bg) radial-gradient(var(--dot) 1.5px, transparent 1.5px) 0 0 / 20px 20px;
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior-y: none;
+  touch-action: manipulation; /* kills double-tap zoom, keeps pinch zoom */
+}
+::selection { background: var(--yellow); color: var(--yellow-ink); }
+h1, h2, h3 { font-family: var(--heading); font-weight: 700; margin: 0; text-wrap: balance; }
+p { margin: 0; }
+svg.i { width: 20px; height: 20px; flex: none; fill: none; stroke: currentColor; stroke-width: 2.25; stroke-linecap: round; stroke-linejoin: round; }
+
+main {
+  max-width: 480px;
+  margin: 0 auto;
+  padding: max(16px, env(safe-area-inset-top)) 16px 120px;
+  display: grid;
+  gap: 24px;
+}
+header { display: flex; align-items: center; justify-content: space-between; min-height: 44px; }
+header h1 { font-size: 1.75rem; letter-spacing: -0.03em; line-height: 1; }
+header p { font-size: 0.8125rem; font-weight: 600; color: var(--ink-muted); }
+
+.card {
+  background: var(--surface);
+  border: var(--stroke) solid var(--border);
+  box-shadow: var(--off) var(--off) 0 var(--shadow);
+}
+
+/* ---------- buttons ---------- */
+button, a.btn {
+  font: inherit; font-weight: 700; font-size: 0.9375rem;
+  color: var(--ink); background: var(--surface);
+  border: var(--stroke) solid var(--border); border-radius: 0;
+  padding: 8px 14px; min-height: 44px;
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  text-decoration: none; cursor: pointer;
+  box-shadow: var(--off) var(--off) 0 var(--shadow);
+  transition: transform 120ms var(--ease), box-shadow 120ms var(--ease);
+}
+button:active:not(:disabled), a.btn:active {
+  transform: translate(2px, 2px);
+  box-shadow: 2px 2px 0 var(--shadow);
+}
+button:focus-visible, a.btn:focus-visible { outline: var(--stroke) solid var(--ink); outline-offset: 3px; }
+button.primary { background: var(--green); color: var(--green-ink); }
+button.ghost { background: none; border-color: transparent; box-shadow: none; color: var(--ink-muted); padding: 8px 4px; }
+button.ghost:active { transform: none; box-shadow: none; color: var(--ink); }
+button.icon { width: 44px; padding: 0; background: none; border-color: transparent; box-shadow: none; color: var(--ink-muted); }
+button.icon:active { transform: scale(0.92); box-shadow: none; }
+.wide { width: 100%; }
+
+.flag {
+  white-space: nowrap;
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 0.8125rem; font-weight: 800; letter-spacing: 0.01em;
+  padding: 3px 8px;
+  border: 2px solid var(--border);
+  background: var(--yellow); color: var(--yellow-ink);
+}
+.flag svg.i { width: 15px; height: 15px; }
+.flag.danger { background: var(--danger); color: var(--danger-ink); }
+
+/* ---------- hero: the countdown ---------- */
+.hero { padding: 20px 20px 18px; display: grid; gap: 18px; }
+.count { display: flex; align-items: baseline; gap: 10px; }
+.count b {
+  font: 700 6rem/0.82 var(--heading);
+  letter-spacing: -0.04em;
+  font-variant-numeric: tabular-nums;
+}
+.count span { font: 700 1.5rem/1 var(--heading); letter-spacing: -0.02em; }
+.hero h2 { font-size: 1.25rem; letter-spacing: -0.02em; line-height: 1.2; }
+.hero .sub { color: var(--ink-muted); font-weight: 500; }
+
+/* 30 cells, one per pill. Remaining pills are solid; they turn yellow at 3 or fewer. */
+.pills { display: grid; gap: 6px; }
+.cells { display: grid; grid-template-columns: repeat(30, 1fr); gap: 2px; height: 22px; }
+.cells i { background: var(--track); box-shadow: inset 0 0 0 1px var(--hairline); }
+.cells i.on { background: var(--ink); box-shadow: none; }
+.cells.low i.on { background: var(--yellow); box-shadow: inset 0 0 0 2px var(--border); }
+.legend { display: flex; justify-content: space-between; font-size: 0.8125rem; font-weight: 600; color: var(--ink-muted); font-variant-numeric: tabular-nums; }
+
+.call {
+  display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 12px;
+  padding-top: 16px; border-top: 1px solid var(--hairline);
+}
+.call p { font-weight: 700; line-height: 1.3; }
+.call p small { display: block; font-size: 0.8125rem; font-weight: 500; color: var(--ink-muted); }
+
+/* ---------- cycle diagram ---------- */
+section > h3 { font-size: 1.0625rem; letter-spacing: -0.01em; margin-bottom: 14px; display: flex; justify-content: space-between; align-items: baseline; }
+section > h3 small { font: 600 0.8125rem var(--sans); color: var(--ink-muted); }
+.diagram { position: relative; padding-top: 26px; }
+.track {
+  position: relative; height: 40px;
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  background: var(--surface);
+  border: var(--stroke) solid var(--border);
+  box-shadow: var(--off) var(--off) 0 var(--shadow);
+}
+.track > i:not(:last-child) { border-right: 2px solid var(--border); z-index: 2; }
+.elapsed { position: absolute; inset: 0 auto 0 0; background: var(--ink); }
+.window { position: absolute; top: 0; bottom: 0; background: var(--yellow); box-shadow: inset 0 0 0 2px var(--border); z-index: 1; }
+.today { position: absolute; top: 0; transform: translateX(-50%); display: grid; justify-items: center; z-index: 3; }
+.today span { font-size: 0.75rem; font-weight: 800; line-height: 1; padding: 3px 6px; background: var(--ink); color: var(--bg); white-space: nowrap; }
+.today::after { content: ''; width: 0; height: 0; border: 6px solid transparent; border-top-color: var(--ink); }
+.today.edge-l { transform: translateX(-12px); justify-items: start; }
+.today.edge-r { transform: translateX(calc(-100% + 12px)); justify-items: end; }
+.today.edge-l::after { margin-left: 6px; }
+.today.edge-r::after { margin-right: 6px; }
+.stops { display: grid; grid-template-columns: repeat(3, 1fr); margin-top: 12px; }
+.stops div { font-size: 0.8125rem; line-height: 1.35; color: var(--ink-muted); font-variant-numeric: tabular-nums; }
+.stops div b { display: block; color: var(--ink); font-size: 0.875rem; }
+.stops div.cur b::after { content: ' · now'; color: var(--ink-muted); font-weight: 600; }
+.end { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--hairline); display: flex; justify-content: space-between; gap: 12px; font-size: 0.8125rem; color: var(--ink-muted); }
+.end b { color: var(--ink); }
+.key { display: inline-block; width: 12px; height: 12px; vertical-align: -1px; margin-right: 6px; background: var(--yellow); box-shadow: inset 0 0 0 2px var(--border); }
+
+/* ---------- check-in ---------- */
+.checkin { padding: 18px 20px 20px; display: grid; gap: 14px; }
+.checkin.urgent { background: var(--yellow); color: var(--yellow-ink); }
+.checkin.urgent .sub { color: var(--yellow-ink); }
+.checkin h2 { font-size: 1.5rem; letter-spacing: -0.02em; line-height: 1.1; }
+.checkin .sub { color: var(--ink-muted); font-weight: 500; font-variant-numeric: tabular-nums; }
+.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+.warn { display: grid; gap: 8px; }
+.warn p { display: flex; gap: 10px; align-items: flex-start; padding: 12px 14px; border: var(--stroke) solid var(--border); background: var(--yellow); color: var(--yellow-ink); font-weight: 600; font-size: 0.9375rem; line-height: 1.35; }
+.warn p.danger { background: var(--danger); color: var(--danger-ink); }
+
+/* ---------- bottom action ---------- */
+.dock {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 10;
+  padding: 12px 16px max(16px, env(safe-area-inset-bottom));
+  background: linear-gradient(to top, var(--bg) 70%, transparent);
+}
+.dock button { width: 100%; max-width: 448px; margin: 0 auto; display: flex; min-height: 56px; font-size: 1.0625rem; }
+
+/* ---------- forms + sheets ---------- */
+form { display: grid; gap: 18px; }
+label.field { display: grid; gap: 6px; min-width: 0; font-size: 0.8125rem; font-weight: 700; color: var(--ink-muted); }
+label.field small { font-weight: 500; }
+input {
+  font: inherit; font-size: 1rem; color: var(--ink);
+  background: var(--surface);
+  border: var(--stroke) solid var(--border); border-radius: 0;
+  padding: 10px 13px; min-height: 48px; width: 100%; min-width: 0;
+}
+input[type='date'] { -webkit-appearance: none; appearance: none; max-width: 100%; text-align: left; }
+input:focus-visible { outline: var(--stroke) solid var(--ink); outline-offset: 2px; }
+fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
+fieldset legend { font-size: 0.8125rem; font-weight: 700; color: var(--ink-muted); padding: 0; margin-bottom: 6px; }
+.seg { display: grid; grid-template-columns: repeat(4, 1fr); border: var(--stroke) solid var(--border); box-shadow: var(--off) var(--off) 0 var(--shadow); }
+.seg label { position: relative; }
+.seg label + label { border-left: var(--stroke) solid var(--border); }
+.seg input { position: absolute; opacity: 0; pointer-events: none; }
+.seg span { display: grid; place-items: center; min-height: 48px; font: 700 1.125rem var(--heading); background: var(--surface); cursor: pointer; }
+.seg input:checked + span { background: var(--ink); color: var(--bg); }
+.seg input:focus-visible + span { outline: var(--stroke) solid var(--yellow); outline-offset: -6px; }
+.error { color: var(--danger-ink); background: var(--danger); border: var(--stroke) solid var(--border); padding: 10px 12px; font-weight: 600; font-size: 0.9375rem; }
+.error:empty { display: none; }
+
+dialog {
+  width: 100%; max-width: 480px; max-height: 92svh;
+  margin: auto auto 0; padding: 20px 16px max(20px, env(safe-area-inset-bottom));
+  border: var(--stroke) solid var(--border); border-bottom: 0;
+  background: var(--bg); color: var(--ink);
+  overflow-y: auto;
+}
+dialog[open] { animation: up 220ms var(--ease); }
+dialog::backdrop { background: oklch(15% 0 0 / 0.45); }
+@keyframes up { from { transform: translateY(40px); opacity: 0; } }
+.sheet-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+.sheet-head h2 { font-size: 1.5rem; letter-spacing: -0.02em; }
+ol.steps { margin: 0 0 20px; padding: 0; list-style: none; counter-reset: s; display: grid; gap: 12px; }
+ol.steps li { counter-increment: s; display: grid; grid-template-columns: 28px 1fr; gap: 10px; line-height: 1.4; }
+ol.steps li::before { content: counter(s); display: grid; place-items: center; height: 28px; font: 700 0.875rem var(--heading); border: 2px solid var(--border); background: var(--surface); }
+code { font: 600 0.875em ui-monospace, Menlo, monospace; background: var(--surface); border: 1px solid var(--hairline); padding: 1px 5px; }
+.note { font-size: 0.8125rem; color: var(--ink-muted); line-height: 1.45; }
+
+.intro { display: grid; gap: 8px; padding: 12px 0 4px; }
+.intro h1 { font-size: 3rem; letter-spacing: -0.04em; line-height: 0.95; }
+.intro p { color: var(--ink-muted); font-size: 1.0625rem; max-width: 32ch; }
+
+.toast {
+  position: fixed; left: 16px; right: 16px; z-index: 30;
+  bottom: calc(max(16px, env(safe-area-inset-bottom)) + 76px);
+  max-width: 448px; margin: 0 auto;
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 10px 10px 10px 16px;
+  background: var(--ink); color: var(--bg); font-weight: 600;
+  border: var(--stroke) solid var(--border);
+  box-shadow: var(--off) var(--off) 0 var(--shadow);
+  animation: up 220ms var(--ease);
+}
+.toast button { min-height: 36px; padding: 4px 12px; box-shadow: none; border-color: var(--bg); background: var(--ink); color: var(--bg); }
+.toast[hidden] { display: none; }
+
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+</style>
+</head>
+<body>
+<main id="app" aria-live="polite"></main>
+
+<dialog id="edit" aria-labelledby="edit-title">
+  <div class="sheet-head"><h2 id="edit-title">Update</h2><button class="icon" type="button" data-close aria-label="Close"><svg class="i" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
+  <form id="edit-form"></form>
+</dialog>
+
+<dialog id="setup" aria-labelledby="setup-title">
+  <div class="sheet-head"><h2 id="setup-title">Reminders setup</h2><button class="icon" type="button" data-close aria-label="Close"><svg class="i" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
+  <p class="note" style="margin-bottom:16px">A web app can’t write to Apple Reminders on its own. A two-step Shortcut bridges it: Phil hands it the text, the Shortcut files the reminder. Build it once, then every “Remind me” is a single tap.</p>
+  <ol class="steps">
+    <li><span>Open <b>Shortcuts</b>, tap <b>+</b>, and name the shortcut exactly <code>Phil Reminder</code>.</span></li>
+    <li><span>Tap the <b>ⓘ</b> details button and turn on <b>Show in Share Sheet</b>. This lets it receive text.</span></li>
+    <li><span>Add the action <b>Get Dates from Input</b>. Leave its input as <b>Shortcut Input</b>.</span></li>
+    <li><span>Add <b>Add New Reminder</b>. Set the reminder text to <b>Shortcut Input</b>, tap <b>Remind Me</b> → <b>At Time</b>, and pick the <b>Dates</b> variable.</span></li>
+  </ol>
+  <button class="primary wide" type="button" id="setup-done">Done — add this reminder</button>
+</dialog>
+
+<div class="toast" id="toast" role="status" hidden><span></span><button type="button">Undo</button></div>
+
+<script type="module">
+import { plan, validate, toISO, toDay, localToday, SUPPLY } from './logic.js';
+
+const KEY = 'phil.v1';
+const SHORTCUT = 'Phil Reminder';
+const load = () => { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch { return {}; } };
+const save = s => { try { localStorage.setItem(KEY, JSON.stringify(s)); } catch {} };
+let state = load();
+
+const DAY = 864e5;
+const fmt = (n, o) => new Intl.DateTimeFormat('en-US', { timeZone: 'UTC', ...o }).format(n * DAY);
+const long = n => fmt(n, { weekday: 'short', month: 'short', day: 'numeric' });
+const short = n => fmt(n, { month: 'short', day: 'numeric' });
+const plural = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`;
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const relative = d => d === 0 ? 'today' : d === 1 ? 'tomorrow' : d === -1 ? 'yesterday' : d > 0 ? `in ${d} days` : `${-d} days ago`;
+
+const icon = {
+  edit: '<path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/><path d="m15 5 4 4"/>',
+  bell: '<path d="M10.268 21a2 2 0 0 0 3.464 0"/><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/>',
+  phone: '<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>',
+  check: '<path d="M20 6 9 17l-5-5"/>',
+  cal: '<path d="M8 2v4M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/><path d="m9 16 2 2 4-4"/>',
+  alert: '<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4M12 17h.01"/>',
+};
+const svg = k => `<svg class="i" viewBox="0 0 24 24" aria-hidden="true">${icon[k]}</svg>`;
+
+// ---------- reminders (via the "Phil Reminder" shortcut) ----------
+let pendingReminder = null;
+function remind(title, day) {
+  // One date in the text, so the Shortcut's "Get Dates" finds exactly one.
+  const when = `${fmt(day, { month: 'long', day: 'numeric', year: 'numeric' })} at 9:00 AM`;
+  const text = `${title} — ${when}`;
+  if (!state.shortcutReady) { pendingReminder = text; openSetup('Done — add this reminder'); return; }
+  location.href = `shortcuts://run-shortcut?name=${encodeURIComponent(SHORTCUT)}&input=text&text=${encodeURIComponent(text)}`;
+}
+function openSetup(label) { document.getElementById('setup-done').textContent = label; document.getElementById('setup').showModal(); }
+document.getElementById('setup-done').onclick = () => {
+  state.shortcutReady = true; save(state);
+  document.getElementById('setup').close();
+  if (pendingReminder) location.href = `shortcuts://run-shortcut?name=${encodeURIComponent(SHORTCUT)}&input=text&text=${encodeURIComponent(pendingReminder)}`;
+};
+
+// ---------- toast with undo ----------
+const toastEl = document.getElementById('toast');
+let toastTimer;
+function toast(msg, undo) {
+  toastEl.querySelector('span').textContent = msg;
+  const b = toastEl.querySelector('button');
+  b.hidden = !undo;
+  b.onclick = () => { undo(); toastEl.hidden = true; };
+  toastEl.hidden = false;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toastEl.hidden = true, 6000);
+}
+
+// ---------- form (first run + edit sheet share it) ----------
+function formHTML(v, submitLabel) {
+  const rx = v.rx ?? 1;
+  return `
+    <label class="field">Last check-in visit<input type="date" name="checkIn" value="${esc(v.checkIn || '')}" max="${today()}" required></label>
+    <label class="field">Last refill picked up<input type="date" name="lastFill" value="${esc(v.lastFill || '')}" max="${today()}" required></label>
+    <fieldset><legend>Which Rx was that refill?</legend>
+      <div class="seg">${[0, 1, 2, 3].map(n => `<label><input type="radio" name="rx" value="${n}" ${n === rx ? 'checked' : ''}><span>${n ? `${n} of 3` : 'Old Rx'}</span></label>`).join('')}</div>
+      <p class="note" style="margin-top:10px">Pick <b>Old Rx</b> if you’ve had the check-in but haven’t filled the new #1 yet.</p>
+    </fieldset>
+    <label class="field"><span>Pharmacy phone <small>· optional, makes “Call” one tap</small></span><input type="tel" name="phone" value="${esc(v.phone || '')}" autocomplete="tel" placeholder="(555) 555-0123"></label>
+    <p class="error" role="alert"></p>
+    <button class="primary wide" type="submit">${submitLabel}</button>
+    ${state.checkIn ? '<button class="ghost" type="button" data-setup>Reminders setup</button>' : ''}`;
+}
+function readForm(form) {
+  const d = new FormData(form);
+  return { checkIn: d.get('checkIn'), lastFill: d.get('lastFill'), rx: Number(d.get('rx')), phone: (d.get('phone') || '').trim() };
+}
+function bindForm(form, onDone) {
+  form.onsubmit = e => {
+    e.preventDefault();
+    const v = readForm(form);
+    const err = validate(v, today());
+    form.querySelector('.error').textContent = err || '';
+    if (err) return;
+    Object.assign(state, v); save(state);
+    onDone?.(); render();
+  };
+}
+function openEdit(defaults = state, title = 'Update') {
+  const dlg = document.getElementById('edit');
+  dlg.querySelector('h2').textContent = title;
+  const form = document.getElementById('edit-form');
+  form.innerHTML = formHTML(defaults, 'Save');
+  bindForm(form, () => dlg.close());
+  form.querySelector('[data-setup]').onclick = () => { pendingReminder = null; dlg.close(); openSetup('Done'); };
+  dlg.showModal();
+}
+document.querySelectorAll('dialog').forEach(d => {
+  d.querySelector('[data-close]').onclick = () => d.close();
+  d.addEventListener('click', e => { if (e.target === d) d.close(); }); // tap the backdrop to dismiss
+});
+
+// ---------- actions ----------
+function pickedUp(p) {
+  const before = { ...state };
+  const next = { ...state, lastFill: today(), rx: p.next.n };
+  const err = validate(next, today());
+  if (err) { toast(err); return; }
+  state = next; save(state); render();
+  toast(`Logged refill #${p.next.n} for today.`, () => { state = before; save(state); render(); });
+}
+
+// ---------- render ----------
+const app = document.getElementById('app');
+const today = () => localToday();
+
+function render() {
+  const t = today();
+  if (validate(state, t) && !(state.checkIn && state.lastFill)) return renderIntro();
+  const p = plan(state, t);
+  // Once it's time to book, the check-in outranks the diagram.
+  app.innerHTML = [header(t), warnings(p), hero(p), ...(urgent(p) ? [checkin(p), cycle(p)] : [cycle(p), checkin(p)])].join('');
+  const dock = document.querySelector('.dock') || document.body.appendChild(Object.assign(document.createElement('div'), { className: 'dock' }));
+  dock.innerHTML = p.next && !p.expired
+    ? `<button class="primary" id="picked">${svg('check')} Picked up refill #${p.next.n}</button>`
+    : `<button class="primary" id="visited">${svg('cal')} I had my check-in</button>`;
+  bind(p);
+}
+
+function renderIntro() {
+  document.querySelector('.dock')?.remove();
+  app.innerHTML = `
+    <div class="intro"><h1>Phil</h1><p>Refills, counted down. Check-ins, never missed. Start with where you are now.</p></div>
+    <form class="card" id="first" style="padding:20px">${formHTML({ ...state, checkIn: state.checkIn || today(), lastFill: state.lastFill || today() }, 'Start tracking')}</form>`;
+  bindForm(document.getElementById('first'));
+}
+
+function header(t) {
+  return `<header><div><h1>Phil</h1></div>
+    <div style="display:flex;align-items:center;gap:4px"><p>${long(toDay(t))}</p>
+    <button class="icon" id="edit-btn" aria-label="Edit dates">${svg('edit')}</button></div></header>`;
+}
+
+function warnings(p) {
+  const out = [];
+  if (p.expired) out.push(`<p class="danger">${svg('alert')}<span>These prescriptions expired ${long(p.expires)}. Rx #${p.rx + 1} can’t be filled — book a check-in for new ones.</span></p>`);
+  else if (p.late.length) out.push(`<p>${svg('alert')}<span>At this pace Rx #${p.late[0]} lands ${short(p.fills[p.late[0] - 1])}, after the scripts expire ${short(p.expires)}. Ask the pharmacy about filling early, or check in sooner.</span></p>`);
+  return out.length ? `<div class="warn">${out.join('')}</div>` : '';
+}
+
+function hero(p) {
+  const d = p.daysLeft;
+  let count, line, sub;
+  if (p.next) {
+    const n = p.next.n;
+    if (d > 0) { count = `<b>${d}</b><span>${d === 1 ? 'day' : 'days'}</span>`; line = `until refill #${n}`; }
+    else if (d === 0) { count = `<b>0</b><span>days</span>`; line = `Refill #${n} is due today`; }
+    else { count = `<b>${-d}</b><span>${-d === 1 ? 'day' : 'days'} late</span>`; line = `Refill #${n} was due`; }
+    sub = long(p.next.due);
+  } else {
+    if (d >= 0) { count = `<b>${d}</b><span>${d === 1 ? 'day' : 'days'}</span>`; line = 'left on your last prescription'; }
+    else { count = `<b>${-d}</b><span>${-d === 1 ? 'day' : 'days'} out</span>`; line = 'since Rx #3 ran out'; }
+    sub = `Last pill ${long(p.runOut - 1)}`;
+  }
+
+  const cells = Array.from({ length: SUPPLY }, (_, i) => `<i class="${i < p.pillsLeft ? 'on' : ''}"></i>`).join('');
+  const pills = `<div class="pills">
+      <div class="cells ${p.pillsLeft <= 3 ? 'low' : ''}" role="img" aria-label="About ${p.pillsLeft} of ${SUPPLY} pills left">${cells}</div>
+      <div class="legend"><span>≈ ${plural(p.pillsLeft, 'pill')} left</span><span>Filled ${short(p.lastFill)}</span></div>
+    </div>`;
+
+  let call = '';
+  if (p.next && !p.expired) {
+    const cd = p.next.call - p.today;
+    const when = cd > 0 ? `Call pharmacy ${long(p.next.call)}` : cd === 0 ? 'Call pharmacy today' : 'Call pharmacy now';
+    const note = cd > 0 ? relative(cd) : 'they fill it the next day';
+    const callNow = cd <= 0 && state.phone;
+    const action = callNow
+      ? `<a class="btn" href="tel:${esc(state.phone.replace(/[^\d+]/g, ''))}">${svg('phone')} Call</a>`
+      : `<button id="remind-call">${svg('bell')} Remind me</button>`;
+    call = `<div class="call"><p>${cd <= 0 ? `<span class="flag">${svg('phone')} ${when}</span>` : when}<small>${note}</small></p>${action}</div>`;
+  }
+  return `<article class="card hero">
+    <div><div class="count">${count}</div></div>
+    <div><h2>${line}</h2><p class="sub">${sub}</p></div>
+    ${pills}${call}</article>`;
+}
+
+function cycle(p) {
+  const start = p.fills[0], len = p.cycleLength;
+  const pct = day => Math.max(0, Math.min(100, (day - start) / len * 100));
+  const now = pct(p.today);
+  const edge = now < 8 ? 'edge-l' : now > 92 ? 'edge-r' : '';
+  const stops = p.fills.map((f, i) => {
+    const n = i + 1, est = n < p.rx; // fills before the one you logged are back-calculated
+    return `<div class="${n === p.rx ? 'cur' : ''}"><b>Rx ${n}</b>${est ? '≈ ' : ''}${short(f)}</div>`;
+  }).join('');
+  const sameDay = p.runOut === p.expires;
+  return `<section aria-label="This prescription cycle">
+    <h3>This cycle <small>${p.rx ? `Rx ${p.rx} of 3` : 'New scripts · none filled'}</small></h3>
+    <div class="diagram">
+      <div class="today ${edge}" style="left:${now}%"><span>Today</span></div>
+      <div class="track" role="img" aria-label="Day ${p.cycleDay + 1} of ${len}. Check-in window ${short(p.visit.from)} to ${short(p.visit.to)}.">
+        <div class="elapsed" style="width:${now}%"></div>
+        <div class="window" style="left:${pct(p.visit.from)}%;width:${pct(p.visit.to + 1) - pct(p.visit.from)}%"></div>
+        <i></i><i></i><i></i>
+      </div>
+    </div>
+    <div class="stops">${stops}</div>
+    <div class="end"><span><i class="key"></i>Check-in window</span><span>${sameDay
+      ? `Supply &amp; scripts end <b>${short(p.runOut)}</b>`
+      : `Supply ends <b>${short(p.runOut)}</b> · scripts expire <b>${short(p.expires)}</b>`}</span></div>
+  </section>`;
+}
+
+function checkin(p) {
+  const until = p.visit.bookBy - p.today;
+  const urgent = until <= 0;
+  const title = urgent ? 'Book your check-in now' : 'Book your next check-in';
+  const by = until === 0 ? 'Today is the booking deadline' : urgent ? `Booking deadline was ${long(p.visit.bookBy)}` : `by ${long(p.visit.bookBy)} · ${relative(until)}`;
+  return `<article class="card checkin ${urgent ? 'urgent' : ''}">
+    <div><h2>${title}</h2><p class="sub">${by}</p></div>
+    <p class="sub">Aim for a visit <b>${short(p.visit.from)} – ${short(p.visit.to)}</b>, so the new Rx #1 is at the pharmacy before your last pill.</p>
+    <button class="wide" id="remind-book">${svg('bell')} Remind me to book</button>
+  </article>`;
+}
+
+function bind(p) {
+  document.getElementById('edit-btn').onclick = () => openEdit();
+  document.getElementById('remind-book').onclick = () => remind('Book doctor check-in', urgent(p) ? p.today + 1 : p.visit.bookBy);
+  const rc = document.getElementById('remind-call');
+  if (rc) rc.onclick = () => remind('Call pharmacy for refill', p.next.call);
+  const pk = document.getElementById('picked');
+  if (pk) pk.onclick = () => pickedUp(p);
+  const vi = document.getElementById('visited');
+  if (vi) vi.onclick = () => openEdit({ ...state, checkIn: today(), rx: 0 }, 'New check-in');
+}
+const urgent = p => p.visit.bookBy <= p.today;
+
+render();
+// Reopened tomorrow from the home screen? Recount.
+document.addEventListener('visibilitychange', () => { if (!document.hidden && !document.querySelector('dialog[open]')) render(); });
+
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js');
+// Ask the browser not to evict our data under storage pressure (granted silently to home-screen apps on iOS 17+).
+navigator.storage?.persist?.();
+</script>
+</body>
+</html>
