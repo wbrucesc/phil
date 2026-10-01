@@ -15,11 +15,13 @@
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="preload" href="fonts/inter.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="fonts/space-grotesk-700.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="fonts/lilita-one.woff2" as="font" type="font/woff2" crossorigin>
 <style>
 /* Visual language is Cartus's (../cartus/docs/DESIGN.md): every control is a block
    with a visible edge and a hard shadow; color means something or isn't used.
    green = confirm/done · yellow = needs attention · danger = destructive. */
 @font-face { font-family: 'Inter Variable'; src: url(fonts/inter.woff2) format('woff2'); font-weight: 100 900; font-display: swap; }
+@font-face { font-family: 'Lilita One'; src: url(fonts/lilita-one.woff2) format('woff2'); font-display: swap; }
 @font-face { font-family: 'Space Grotesk'; src: url(fonts/space-grotesk-700.woff2) format('woff2'); font-weight: 700; font-display: swap; }
 
 :root {
@@ -96,10 +98,13 @@ main {
   gap: 24px;
 }
 header { display: flex; align-items: center; justify-content: space-between; min-height: 44px; }
-header h1 { font-size: 1.75rem; letter-spacing: -0.03em; line-height: 1; }
-.brand { display: flex; align-items: center; gap: 10px; }
-/* the home-screen icon in miniature, as a block: cream tile keeps it legible in dark mode */
-.mark { display: block; background: oklch(97% 0.02 90); border: 2px solid var(--border); box-shadow: 2px 2px 0 var(--shadow); }
+/* the wordmark: Lilita One's rounded weight matches the cartoon bottle beside it */
+.brand h1 { font: 400 2.375rem/1 'Lilita One', var(--heading); letter-spacing: 0; }
+.brand { display: flex; align-items: center; gap: 6px; }
+/* the home-screen icon in miniature; outline and shadow follow the theme tokens so it holds up in dark mode */
+.brand svg { display: block; height: 46px; width: auto; flex: none; }
+.intro .brand svg { height: 78px; }
+.intro .brand h1 { font-size: 3.75rem; }
 header p { font-size: 0.8125rem; font-weight: 600; color: var(--ink-muted); }
 
 .card {
@@ -261,7 +266,6 @@ code { font: 600 0.875em ui-monospace, Menlo, monospace; background: var(--surfa
 .note { font-size: 0.8125rem; color: var(--ink-muted); line-height: 1.45; }
 
 .intro { display: grid; gap: 8px; padding: 12px 0 4px; }
-.intro h1 { font-size: 3rem; letter-spacing: -0.04em; line-height: 0.95; }
 .intro p { color: var(--ink-muted); font-size: 1.0625rem; max-width: 32ch; }
 
 .toast {
@@ -328,6 +332,12 @@ const icon = {
   cal: '<path d="M8 2v4M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/><path d="m9 16 2 2 4-4"/>',
   alert: '<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4M12 17h.01"/>',
 };
+const MARK = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="104 32 324 452" aria-hidden="true"><g transform="translate(256 256) scale(1) translate(-256 -256) translate(-6 0) rotate(-9 256 256)"><rect x="170" y="168" width="208" height="290" rx="22" fill="var(--shadow)"/>
+      <rect x="152" y="150" width="208" height="290" rx="22" fill="#f5d14a" stroke="var(--border)" stroke-width="20"/>
+      <rect x="152" y="222" width="208" height="150" fill="#fdfcf7" stroke="var(--border)" stroke-width="16"/><ellipse cx="220" cy="284" rx="17" ry="23" fill="#1b1b1b"/><circle cx="226" cy="275" r="6" fill="#fdfcf7"/><path d="M274 288Q292 270 310 288" fill="none" stroke="#1b1b1b" stroke-width="13" stroke-linecap="round"/><path d="M214 324Q256 356 298 324" fill="none" stroke="#1b1b1b" stroke-width="13" stroke-linecap="round"/><g transform="">
+      <rect x="150" y="88" width="248" height="92" rx="12" fill="var(--shadow)"/>
+      <rect x="132" y="70" width="248" height="92" rx="12" fill="#5fd38a" stroke="var(--border)" stroke-width="18"/>
+      <g stroke="#1b1b1b" stroke-width="10" stroke-linecap="round"><path d="M172 92V140"/><path d="M206 92V140"/><path d="M240 92V140"/><path d="M274 92V140"/><path d="M308 92V140"/><path d="M342 92V140"/></g></g></g></svg>`;
 const svg = k => `<svg class="i" viewBox="0 0 24 24" aria-hidden="true">${icon[k]}</svg>`;
 
 // ---------- reminders (via the "Phil Reminder" shortcut) ----------
@@ -433,13 +443,13 @@ function render() {
 function renderIntro() {
   document.querySelector('.dock')?.remove();
   app.innerHTML = `
-    <div class="intro"><h1>Phil</h1><p>Refills, counted down. Check-ins, never missed. Start with where you are now.</p></div>
+    <div class="intro"><div class="brand">${MARK}<h1>Phil</h1></div><p>Refills, counted down. Check-ins, never missed. Start with where you are now.</p></div>
     <form class="card" id="first" style="padding:20px">${formHTML({ ...state, checkIn: state.checkIn || today(), lastFill: state.lastFill || today() }, 'Start tracking')}</form>`;
   bindForm(document.getElementById('first'));
 }
 
 function header(t) {
-  return `<header><div class="brand"><img class="mark" src="mark.svg" alt="" width="36" height="36"><h1>Phil</h1></div>
+  return `<header><div class="brand">${MARK}<h1>Phil</h1></div>
     <div style="display:flex;align-items:center;gap:4px"><p>${long(toDay(t))}</p>
     <button class="icon" id="edit-btn" aria-label="Edit dates">${svg('edit')}</button></div></header>`;
 }

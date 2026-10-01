@@ -1,6 +1,6 @@
 // Network-first so updates always land; cache is only the offline fallback.
-const CACHE = 'phil-v2';
-const SHELL = ['./', 'index.html', 'logic.js', 'manifest.webmanifest', 'fonts/inter.woff2', 'fonts/space-grotesk-700.woff2', 'apple-touch-icon.png', 'mark.svg'];
+const CACHE = 'phil-v3';
+const SHELL = ['./', 'index.html', 'logic.js', 'manifest.webmanifest', 'fonts/inter.woff2', 'fonts/space-grotesk-700.woff2', 'apple-touch-icon.png', 'fonts/lilita-one.woff2'];
 
 self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL))); self.skipWaiting(); });
 self.addEventListener('activate', e => e.waitUntil(clients.claim()));
